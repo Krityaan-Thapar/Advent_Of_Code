@@ -5,7 +5,8 @@ def move(p, d):
     if all([
         grid[p] != '[' or move(p+1, d) and move(p, d),
         grid[p] != ']' or move(p-1, d) and move(p, d),
-        grid[p] != 'O' or move(p, d), grid[p] != '#']):
+        grid[p] != 'O' or move(p, d), 
+        grid[p] != '#']):
             grid[p], grid[p-d] = grid[p-d], grid[p]
             return True
 

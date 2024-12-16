@@ -22,7 +22,8 @@ func main() {
 	input_path := "input.txt"
 	test_path := "test.txt"
 	test2_path := "test2.txt"
-	modeFlag := flag.String("mode", "T", "Default: T, test. Insert I for input mode, T2 for test 2")
+	test3_path := "test3.txt"
+	modeFlag := flag.String("mode", "T", "Default: T, test. Insert I for input mode, T2 for test 2, T3 for test 3")
 	flag.Parse()
 
 	file_path := test_path
@@ -30,6 +31,8 @@ func main() {
 		file_path = input_path
 	} else if *modeFlag == "T2" {
 		file_path = test2_path
+	} else if *modeFlag == "T3" {
+		file_path = test3_path
 	}
 
 	file := Handle(os.Open(file_path))
@@ -46,19 +49,43 @@ func main() {
 	}
 	var commands string
 	curr := ParseInput(&grid, &commands, &text)
-	Simulate(&commands, &grid, curr[0], curr[1])
+	curr2 := make([]int, 2)
 
-	for _, ln := range grid {
-		log.Println(ln)
+	grid2 := make([][]int, len(grid))
+	for i := range grid2 {
+		grid2[i] = make([]int, len(text[0])*2)
 	}
 
+	for i := range grid {
+		for j := range grid[i] {
+			if grid[i][j] == 1 {
+				grid2[i][j*2] = 1
+				grid2[i][j*2+1] = 1
+			} else if grid[i][j] == 2 {
+				grid2[i][j*2] = 2
+				grid2[i][j*2+1] = 4
+			}
+		}
+	}
+	curr2[0], curr2[1] = curr[0], curr[1]*2
+
+	Simulate(&commands, &grid, curr[0], curr[1])
+	Simulate2(&commands, &grid2, curr2[0], curr2[1])
 	part1 := 0
 	part2 := 0
 
 	for i := range grid {
-		for j := range grid {
+		for j := range grid[i] {
 			if grid[i][j] == 2 {
 				part1 += 100*i + j
+			}
+		}
+	}
+
+	for i := range grid2 {
+		for j := range grid2[i] {
+			if grid2[i][j] == 2 {
+				part2 += 100*i + j
 			}
 		}
 	}
@@ -115,4 +142,76 @@ func Simulate(commands *string, grid *[][]int, src_x int, src_y int) {
 		(*grid)[nx][ny] = 0
 		src_x, src_y = nx, ny
 	}
+}
+
+func Simulate2(commands *string, grid *[][]int, src_x int, src_y int) {
+	d := make(map[rune][]int)
+	d['^'] = []int{-1, 0}
+	d['>'] = []int{0, 1}
+	d['<'] = []int{0, -1}
+	d['v'] = []int{1, 0}
+	grid_copy := make([][]int, len(*grid))
+	for i := range grid_copy {
+		grid_copy[i] = make([]int, len((*grid)[0]))
+	}
+
+	for _, char := range *commands {
+		for i := range *grid {
+			copy(grid_copy[i], (*grid)[i])
+		}
+
+		dx, dy := d[char][0], d[char][1]
+		if Push(grid, src_x+dx, src_y+dy, dx, dy) {
+			//log.Println("Push success")
+			src_x += dx
+			src_y += dy
+		} else {
+			for i := range grid_copy {
+				copy((*grid)[i], grid_copy[i])
+			}
+		}
+	}
+}
+
+func Push(grid *[][]int, src_x int, src_y int, dx int, dy int) bool {
+	if (*grid)[src_x][src_y] == 1 {
+		return false
+	}
+
+	if (*grid)[src_x][src_y] == 0 {
+		return true
+	}
+
+	if dx == 0 {
+		if Push(grid, src_x+dx, src_y+dy, dx, dy) {
+			(*grid)[src_x][src_y], (*grid)[src_x+dx][src_y+dy] = (*grid)[src_x+dx][src_y+dy], (*grid)[src_x][src_y]
+			return true
+		}
+	} else {
+		//log.Println("Push start")
+		if (*grid)[src_x][src_y] == 2 {
+			//log.Println("Pushing 2")
+			push_left := Push(grid, src_x+dx, src_y+dy, dx, dy)
+			//log.Println("push_left:", push_left)
+			push_right := Push(grid, src_x+dx, src_y+1+dy, dx, dy)
+			//log.Println("push_right:", push_right)
+			if push_left && push_right {
+				(*grid)[src_x][src_y], (*grid)[src_x+dx][src_y+dy] = (*grid)[src_x+dx][src_y+dy], (*grid)[src_x][src_y]
+				(*grid)[src_x][src_y+1], (*grid)[src_x+dx][src_y+1+dy] = (*grid)[src_x+dx][src_y+1+dy], (*grid)[src_x][src_y+1]
+				return true
+			}
+		} else {
+			//log.Println("Pushing 4")
+			push_right := Push(grid, src_x+dx, src_y+dy, dx, dy)
+			//log.Println("push_right:", push_right)
+			push_left := Push(grid, src_x+dx, src_y-1+dy, dx, dy)
+			//log.Println("push_left:", push_left)
+			if push_left && push_right {
+				(*grid)[src_x][src_y], (*grid)[src_x+dx][src_y+dy] = (*grid)[src_x+dx][src_y+dy], (*grid)[src_x][src_y]
+				(*grid)[src_x][src_y-1], (*grid)[src_x+dx][src_y-1+dy] = (*grid)[src_x+dx][src_y-1+dy], (*grid)[src_x][src_y-1]
+				return true
+			}
+		}
+	}
+	return false
 }
